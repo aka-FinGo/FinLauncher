@@ -18,6 +18,11 @@ class PreferencesManager(private val context: Context) {
         val FAVORITES_KEY = stringSetPreferencesKey("favorite_apps")
         val HIDDEN_APPS_KEY = stringSetPreferencesKey("hidden_apps")
         val FIRST_RUN_DONE_KEY = booleanPreferencesKey("is_first_run_done")
+        val HAPTICS_KEY = booleanPreferencesKey("haptics_enabled")
+        val QUICK_REPLIES_KEY = booleanPreferencesKey("quick_replies_enabled")
+        val CALENDAR_PREVIEW_KEY = booleanPreferencesKey("calendar_preview_enabled")
+        val WEATHER_KEY = booleanPreferencesKey("weather_enabled")
+        val MEDIA_PLAYER_KEY = booleanPreferencesKey("media_player_enabled")
     }
 
     val favoritesFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
@@ -32,9 +37,59 @@ class PreferencesManager(private val context: Context) {
         preferences[FIRST_RUN_DONE_KEY] ?: false
     }
 
+    val hapticsEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HAPTICS_KEY] ?: true
+    }
+
+    val quickRepliesFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[QUICK_REPLIES_KEY] ?: true
+    }
+
+    val calendarPreviewFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[CALENDAR_PREVIEW_KEY] ?: true
+    }
+
+    val weatherEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[WEATHER_KEY] ?: true
+    }
+
+    val mediaPlayerFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[MEDIA_PLAYER_KEY] ?: true
+    }
+
     suspend fun setFirstRunDone(done: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[FIRST_RUN_DONE_KEY] = done
+        }
+    }
+
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HAPTICS_KEY] = enabled
+        }
+    }
+
+    suspend fun setQuickReplies(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[QUICK_REPLIES_KEY] = enabled
+        }
+    }
+
+    suspend fun setCalendarPreview(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[CALENDAR_PREVIEW_KEY] = enabled
+        }
+    }
+
+    suspend fun setWeatherEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[WEATHER_KEY] = enabled
+        }
+    }
+
+    suspend fun setMediaPlayer(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[MEDIA_PLAYER_KEY] = enabled
         }
     }
 

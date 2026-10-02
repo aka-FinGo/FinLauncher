@@ -24,6 +24,7 @@ import com.fingo.finlauncher.data.PreferencesManager
 import com.fingo.finlauncher.service.NotificationListener
 import com.fingo.finlauncher.ui.screens.HomeScreen
 import com.fingo.finlauncher.ui.screens.OnboardingFavoritesScreen
+import com.fingo.finlauncher.ui.screens.SettingsScreen
 import com.fingo.finlauncher.ui.theme.FinLauncherTheme
 import kotlinx.coroutines.launch
 
@@ -47,7 +48,15 @@ class MainActivity : ComponentActivity() {
                 val favorites by preferencesManager.favoritesFlow.collectAsState(initial = emptySet())
                 val hiddenApps by preferencesManager.hiddenAppsFlow.collectAsState(initial = emptySet())
                 val notifications by NotificationListener.notificationsFlow.collectAsState(initial = emptyMap())
+                
+                val hapticsEnabled by preferencesManager.hapticsEnabledFlow.collectAsState(initial = true)
+                val quickReplies by preferencesManager.quickRepliesFlow.collectAsState(initial = true)
+                val calendarPreview by preferencesManager.calendarPreviewFlow.collectAsState(initial = true)
+                val weatherEnabled by preferencesManager.weatherEnabledFlow.collectAsState(initial = true)
+                val mediaPlayer by preferencesManager.mediaPlayerFlow.collectAsState(initial = true)
+
                 val scope = rememberCoroutineScope()
+                var isSettingsOpen by remember { mutableStateOf(false) }
 
                 // Check and prompt default launcher on launch
                 LaunchedEffect(Unit) {
@@ -65,6 +74,48 @@ class MainActivity : ComponentActivity() {
                                 preferencesManager.setFavorites(selectedSet)
                                 preferencesManager.setFirstRunDone(true)
                             }
+                        }
+                    )
+                } else if (isSettingsOpen) {
+                    val enrichedApps = remember(appsList, favorites, hiddenApps) {
+                        appsList.map { app ->
+                            app.copy(
+                                isFavorite = favorites.contains(app.packageName),
+                                isHidden = hiddenApps.contains(app.packageName)
+                            )
+                        }
+                    }
+
+                    SettingsScreen(
+                        onClose = { isSettingsOpen = false },
+                        onChangeDefaultLauncher = { promptSetDefaultLauncher() },
+                        onRestartLauncher = { recreate() },
+                        onUninstallLauncher = { appRepository.uninstallApp(packageName) },
+                        allApps = enrichedApps,
+                        onToggleHide = { app ->
+                            scope.launch {
+                                preferencesManager.toggleHidden(app.packageName)
+                            }
+                        },
+                        hapticsEnabled = hapticsEnabled,
+                        onToggleHaptics = { enabled ->
+                            scope.launch { preferencesManager.setHapticsEnabled(enabled) }
+                        },
+                        quickReplies = quickReplies,
+                        onToggleQuickReplies = { enabled ->
+                            scope.launch { preferencesManager.setQuickReplies(enabled) }
+                        },
+                        calendarPreview = calendarPreview,
+                        onToggleCalendarPreview = { enabled ->
+                            scope.launch { preferencesManager.setCalendarPreview(enabled) }
+                        },
+                        weatherEnabled = weatherEnabled,
+                        onToggleWeather = { enabled ->
+                            scope.launch { preferencesManager.setWeatherEnabled(enabled) }
+                        },
+                        mediaPlayer = mediaPlayer,
+                        onToggleMediaPlayer = { enabled ->
+                            scope.launch { preferencesManager.setMediaPlayer(enabled) }
                         }
                     )
                 } else {
@@ -101,7 +152,11 @@ class MainActivity : ComponentActivity() {
                             scope.launch {
                                 preferencesManager.toggleHidden(app.packageName)
                             }
-                        }
+                        },
+                        onOpenSettings = {
+                            isSettingsOpen = true
+                        },
+                        hapticsEnabled = hapticsEnabled
                     )
                 }
             }

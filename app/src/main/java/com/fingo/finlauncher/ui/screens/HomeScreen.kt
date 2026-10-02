@@ -27,10 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +38,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,21 +47,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fingo.finlauncher.R
 import com.fingo.finlauncher.data.AppModel
 import com.fingo.finlauncher.ui.components.AlphabetWaveSlider
 import com.fingo.finlauncher.ui.components.AppItemRow
 import com.fingo.finlauncher.ui.components.AppOptionsBottomSheet
 import com.fingo.finlauncher.ui.components.MinimalHeader
-import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.DarkBackground
 import com.fingo.finlauncher.ui.theme.PureBlack
 import com.fingo.finlauncher.ui.theme.TextPrimary
@@ -77,25 +77,26 @@ fun HomeScreen(
     onOpenAppInfo: (AppModel) -> Unit,
     onUninstallApp: (AppModel) -> Unit,
     onToggleHide: (AppModel) -> Unit,
-    onOpenSettings: () -> Unit = {},
+    onOpenSettings: () -> Unit,
+    hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var isSearchOpen by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedAppForOptions by remember { mutableStateOf<AppModel?>(null) }
-    
+
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val searchFocusRequester = remember { FocusRequester() }
 
-    // System Back button closes search or scrolls to top
+    // System Back button closes search or scrolls back to top
     BackHandler {
         if (isSearchOpen) {
             isSearchOpen = false
             searchQuery = ""
         } else if (listState.firstVisibleItemIndex > 0) {
-            coroutineScope.launch { listState.scrollToItem(0) }
+            coroutineScope.launch { listState.animateScrollToItem(0) }
         }
     }
 
@@ -115,22 +116,18 @@ fun HomeScreen(
             .toSortedMap()
     }
 
-    // Fast index mapping for 1-to-1 Niagara wave slider
-    // Index 0 is Header (Clock + Date)
-    // Indexes 1 .. favoriteApps.size are Favorites
-    // Next indexes are Alphabet headers and apps
-    val letterIndexMap = remember(favoriteApps, groupedApps) {
+    // Fast index mapping for 1:1 Niagara wave slider
+    val (letterIndexMap, totalItemCount) = remember(favoriteApps, groupedApps) {
         val map = mutableMapOf<Char, Int>()
-        // '☆' points to top (Favorites)
         map['☆'] = 0
-        map['★'] = 0
 
-        var currentIndex = 1 + favoriteApps.size
+        var currentIndex = 1 + favoriteApps.size // 1 for header + fav apps
         groupedApps.forEach { (letter, appList) ->
             map[letter] = currentIndex
-            currentIndex += 1 + appList.size // 1 for header + apps count
+            currentIndex += 1 + appList.size // 1 for letter header + apps
         }
-        map
+        map['°'] = currentIndex // footer settings
+        Pair(map, currentIndex + 1)
     }
 
     val availableLetters = remember(groupedApps) {
@@ -138,9 +135,17 @@ fun HomeScreen(
         listOf('☆') + (if (letters.isEmpty()) ('A'..'Z').toList() else letters) + listOf('°')
     }
 
+    // Detect if scrolled near bottom to morph FAB into Settings icon
+    val isNearBottom by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= (totalItemCount - 4).coerceAtLeast(0)
+        }
+    }
+
     // Search filtered apps
     val searchFilteredApps = remember(visibleApps, searchQuery) {
-        if (searchQuery.isBlank()) emptyList()
+        if (searchQuery.isBlank()) visibleApps.take(15) // Recent / suggested apps when empty
         else visibleApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     }
 
@@ -156,11 +161,11 @@ fun HomeScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(end = 56.dp) // Space for the wave slider on the right
+                .padding(end = 52.dp) // Space for the wave slider on the right
                 .pointerInput(Unit) {
                     detectVerticalDragGestures { _, dragAmount ->
-                        // Swipe DOWN at the top expands system notifications!
-                        if (dragAmount > 22f && listState.firstVisibleItemIndex == 0) {
+                        // Swipe DOWN at top pulls down system notification shade
+                        if (dragAmount > 24f && listState.firstVisibleItemIndex == 0) {
                             StatusBarHelper.expandNotifications(context)
                         }
                     }
@@ -168,9 +173,9 @@ fun HomeScreen(
         ) {
             // A. Clock, Date, Battery
             item(key = "header_clock") {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 MinimalHeader()
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // B. Favorite Apps (Directly below clock!)
@@ -182,9 +187,9 @@ fun HomeScreen(
                 )
             }
 
-            // C. Divider spacer before Alphabetical sections
+            // C. Spacing before Alphabetical sections
             item(key = "divider_before_all") {
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             // D. Alphabetical Grouped Apps (A..Z)
@@ -195,7 +200,7 @@ fun HomeScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
 
@@ -208,61 +213,98 @@ fun HomeScreen(
                 }
             }
 
-            // E. Footer: FinLauncher Settings & Info
+            // E. Footer: FinLauncher Settings & Info (1:1 with Niagara screenshot)
             item(key = "footer_settings") {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = "FinLauncher",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Recently Installed row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { isSearchOpen = true }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0x33FFB74D)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.History,
+                                contentDescription = "Recent",
+                                tint = Color(0xFFFFB74D),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = stringResource(R.string.recently_installed),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                    }
+
+                    // Niagara Settings row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onOpenSettings() }
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color(0x3300E5FF)),
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0x33E55B44)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Settings,
                                 contentDescription = "Settings",
-                                tint = AccentCyan,
-                                modifier = Modifier.size(20.dp)
+                                tint = Color(0xFFE55B44),
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            text = "FinLauncher Sozlamalari (Pro Bepul)",
-                            fontSize = 15.sp,
+                            text = stringResource(R.string.settings_title),
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = TextPrimary
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(90.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
 
         // ==========================================
-        // 2. NIAGARA WAVE SLIDER (Always on Right Edge)
+        // 2. NIAGARA WAVE SLIDER (Right Edge)
         // ==========================================
         AlphabetWaveSlider(
             availableLetters = availableLetters,
+            hapticsEnabled = hapticsEnabled,
             modifier = Modifier.align(Alignment.CenterEnd),
             onLetterSelected = { letter ->
                 val targetIndex = letterIndexMap[letter] ?: letterIndexMap['☆'] ?: 0
@@ -273,22 +315,28 @@ fun HomeScreen(
         )
 
         // ==========================================
-        // 3. FLOATING SEARCH BUTTON (Bottom Right FAB)
+        // 3. FLOATING ACTION BUTTON (Niagara Coral FAB)
         // ==========================================
         if (!isSearchOpen) {
             FloatingActionButton(
-                onClick = { isSearchOpen = true },
+                onClick = {
+                    if (isNearBottom) {
+                        onOpenSettings()
+                    } else {
+                        isSearchOpen = true
+                    }
+                },
                 containerColor = Color(0xFFE55B44), // Niagara coral/red accent
                 contentColor = PureBlack,
                 shape = CircleShape,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 65.dp, bottom = 28.dp)
+                    .padding(end = 56.dp, bottom = 28.dp)
                     .size(54.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Search,
-                    contentDescription = "Search",
+                    imageVector = if (isNearBottom) Icons.Outlined.Settings else Icons.Outlined.Search,
+                    contentDescription = if (isNearBottom) "Settings" else "Search",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -296,7 +344,7 @@ fun HomeScreen(
         }
 
         // ==========================================
-        // 4. NIAGARA SEARCH OVERLAY
+        // 4. NIAGARA SEARCH OVERLAY (1:1 with Screenshot)
         // ==========================================
         AnimatedVisibility(
             visible = isSearchOpen,
@@ -316,7 +364,7 @@ fun HomeScreen(
                     .padding(top = 28.dp)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Search Bar
+                    // Search Bar Pill
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -328,7 +376,7 @@ fun HomeScreen(
                             onValueChange = { searchQuery = it },
                             placeholder = {
                                 Text(
-                                    text = "Ilovalarni qidirish…",
+                                    text = stringResource(R.string.search_hint),
                                     color = TextSecondary,
                                     fontSize = 16.sp
                                 )

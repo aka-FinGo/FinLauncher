@@ -1,7 +1,7 @@
 package com.fingo.finlauncher.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -24,10 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -36,8 +38,9 @@ import androidx.compose.ui.unit.sp
 import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.PureBlack
 import com.fingo.finlauncher.ui.theme.TextPrimary
-import com.fingo.finlauncher.ui.theme.TextSecondary
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.roundToInt
 
 @Composable
@@ -47,10 +50,16 @@ fun AlphabetWaveSlider(
     onLetterSelected: (Char) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+
     var touchY by remember { mutableFloatStateOf(-1f) }
     var isDragging by remember { mutableStateOf(false) }
     var columnHeight by remember { mutableFloatStateOf(0f) }
     var selectedLetter by remember { mutableStateOf<Char?>(null) }
+
+    // Wave arc maximum displacement in pixels (~75dp)
+    val maxWaveArcPx = with(density) { 76.dp.toPx() }
+    val waveRadiusPx = with(density) { 180.dp.toPx() }
 
     fun updateSelection(y: Float) {
         if (columnHeight <= 0f || availableLetters.isEmpty()) return
@@ -68,8 +77,8 @@ fun AlphabetWaveSlider(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .width(50.dp)
-            .padding(vertical = 24.dp)
+            .width(85.dp) // Wide touch target for thumb ergonomics
+            .padding(vertical = 20.dp)
             .onGloballyPositioned { layoutCoordinates ->
                 columnHeight = layoutCoordinates.size.height.toFloat()
             }
@@ -122,28 +131,27 @@ fun AlphabetWaveSlider(
                     (index + 0.5f) * (columnHeight / count)
                 } else -100f
 
-                // Niagara wave curved displacement calculation
+                // Direct Niagara Wave math - instantaneous during drag, smooth release on end
                 val distance = if (touchY >= 0f) abs(touchY - itemCenterY) else 9999f
-                val waveRadius = 160f
-                val waveFraction = if (distance < waveRadius) {
-                    (1f - (distance / waveRadius))
+                val rawFraction = if (isDragging && distance < waveRadiusPx) {
+                    cos((distance / waveRadiusPx) * (PI.toFloat() / 2f)).coerceIn(0f, 1f)
                 } else 0f
 
-                // Curved displacement: moves smoothly to the left
-                val curveOffset = if (isDragging) {
-                    -waveFraction * waveFraction * 44f
-                } else 0f
+                // Instant calculation during drag (no animator delay!)
+                val targetOffsetX = -rawFraction * maxWaveArcPx
+                val targetScale = 1f + (rawFraction * 0.75f)
 
-                val offsetXAnim by animateFloatAsState(
-                    targetValue = curveOffset,
-                    animationSpec = spring(stiffness = 800f, dampingRatio = 0.75f),
-                    label = "waveOffset"
+                // Smooth fade back to 0 on release
+                val smoothOffsetX by animateFloatAsState(
+                    targetValue = targetOffsetX,
+                    animationSpec = tween(durationMillis = if (isDragging) 0 else 200),
+                    label = "waveX"
                 )
 
-                val scaleAnim by animateFloatAsState(
-                    targetValue = if (isDragging) 1f + (waveFraction * 0.9f) else 1f,
-                    animationSpec = spring(stiffness = 800f, dampingRatio = 0.75f),
-                    label = "waveScale"
+                val smoothScale by animateFloatAsState(
+                    targetValue = targetScale,
+                    animationSpec = tween(durationMillis = if (isDragging) 0 else 200),
+                    label = "waveS"
                 )
 
                 val isTarget = selectedLetter == letter
@@ -151,44 +159,43 @@ fun AlphabetWaveSlider(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .offset { IntOffset(offsetXAnim.roundToInt(), 0) }
-                        .scale(scaleAnim)
-                        .padding(end = 8.dp),
+                        .offset { IntOffset(smoothOffsetX.roundToInt(), 0) }
+                        .scale(smoothScale)
+                        .padding(end = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = letter.toString(),
-                        fontSize = if (letter == '★') 13.sp else if (isTarget) 14.sp else 11.sp,
-                        fontWeight = if (isTarget) FontWeight.ExtraBold else FontWeight.Medium,
+                        fontSize = if (letter == '★') 14.sp else if (isTarget) 14.sp else 11.sp,
+                        fontWeight = if (isTarget) FontWeight.ExtraBold else FontWeight.SemiBold,
                         color = when {
                             isTarget -> AccentCyan
-                            waveFraction > 0.4f -> TextPrimary
-                            letter == '★' -> AccentCyan.copy(alpha = 0.85f)
-                            else -> Color(0xB3FFFFFF) // Readable over any wallpaper
+                            rawFraction > 0.35f -> TextPrimary
+                            letter == '★' -> AccentCyan
+                            else -> Color(0xD9FFFFFF)
                         }
                     )
                 }
             }
         }
 
-        // Niagara floating magnified thumb bubble attached to the curve
+        // Magnified circular thumb badge attached to the wave crest
         if (isDragging && selectedLetter != null && touchY in 0f..columnHeight) {
+            val bubbleOffsetY = (touchY - with(density) { 28.dp.toPx() }).toInt()
+            val bubbleOffsetX = -(maxWaveArcPx + with(density) { 36.dp.toPx() }).toInt()
+
             Box(
                 modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            x = -85.dp.roundToPx(),
-                            y = (touchY - 28.dp.roundToPx()).toInt()
-                        )
-                    }
+                    .offset { IntOffset(bubbleOffsetX, bubbleOffsetY) }
                     .size(56.dp)
+                    .shadow(8.dp, CircleShape)
                     .clip(CircleShape)
                     .background(AccentCyan),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = selectedLetter.toString(),
-                    fontSize = if (selectedLetter == '★') 22.sp else 24.sp,
+                    fontSize = if (selectedLetter == '★') 24.sp else 26.sp,
                     fontWeight = FontWeight.Black,
                     color = PureBlack
                 )

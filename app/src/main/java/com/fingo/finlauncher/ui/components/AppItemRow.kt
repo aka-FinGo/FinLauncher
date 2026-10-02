@@ -1,9 +1,5 @@
 package com.fingo.finlauncher.ui.components
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -19,13 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,25 +29,6 @@ import androidx.compose.ui.unit.sp
 import com.fingo.finlauncher.data.AppModel
 import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.TextPrimary
-
-@Composable
-fun rememberNativeDrawablePainter(drawable: Drawable?): Painter? {
-    if (drawable == null) return null
-    return remember(drawable) {
-        val bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
-            drawable.bitmap
-        } else {
-            val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 96
-            val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 96
-            val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bmp)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            bmp
-        }
-        BitmapPainter(bitmap.asImageBitmap())
-    }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -72,17 +49,16 @@ fun AppItemRow(
             .padding(horizontal = 16.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // App Icon
+        // App Icon (Pre-cached hardware accelerated ImageBitmap)
         Box(
             modifier = Modifier
                 .size(42.dp)
                 .clip(RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            val painter = rememberNativeDrawablePainter(drawable = app.icon)
-            if (painter != null) {
+            if (app.iconBitmap != null) {
                 Image(
-                    painter = painter,
+                    bitmap = app.iconBitmap,
                     contentDescription = app.label,
                     modifier = Modifier.size(42.dp)
                 )
@@ -102,7 +78,14 @@ fun AppItemRow(
                 fontWeight = FontWeight.Medium,
                 color = TextPrimary,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.75f),
+                        offset = Offset(0f, 2f),
+                        blurRadius = 4f
+                    )
+                )
             )
 
             // Niagara inline notification snippet
@@ -113,7 +96,14 @@ fun AppItemRow(
                     color = AccentCyan,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
+                    modifier = Modifier.padding(top = 2.dp),
+                    style = TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.8f),
+                            offset = Offset(0f, 2f),
+                            blurRadius = 4f
+                        )
+                    )
                 )
             }
         }

@@ -77,10 +77,9 @@ fun AppOptionsBottomSheet(
                         .clip(RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    val painter = rememberNativeDrawablePainter(drawable = app.icon)
-                    if (painter != null) {
+                    if (app.iconBitmap != null) {
                         Image(
-                            painter = painter,
+                            bitmap = app.iconBitmap,
                             contentDescription = app.label,
                             modifier = Modifier.size(48.dp)
                         )

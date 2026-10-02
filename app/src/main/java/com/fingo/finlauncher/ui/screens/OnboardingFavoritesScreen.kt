@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fingo.finlauncher.data.AppModel
 import com.fingo.finlauncher.ui.components.SearchBar
-import com.fingo.finlauncher.ui.components.rememberNativeDrawablePainter
 import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.DarkBackground
 import com.fingo.finlauncher.ui.theme.PureBlack
@@ -164,10 +163,9 @@ fun OnboardingFavoritesScreen(
                                 .clip(RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            val painter = rememberNativeDrawablePainter(app.icon)
-                            if (painter != null) {
+                            if (app.iconBitmap != null) {
                                 Image(
-                                    painter = painter,
+                                    bitmap = app.iconBitmap,
                                     contentDescription = app.label,
                                     modifier = Modifier.size(40.dp)
                                 )

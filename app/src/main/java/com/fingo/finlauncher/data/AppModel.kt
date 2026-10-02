@@ -1,12 +1,12 @@
 package com.fingo.finlauncher.data
 
-import android.graphics.drawable.Drawable
+import androidx.compose.ui.graphics.ImageBitmap
 
 data class AppModel(
     val label: String,
     val packageName: String,
     val activityName: String,
-    val icon: Drawable? = null,
+    val iconBitmap: ImageBitmap? = null,
     val isFavorite: Boolean = false,
     val isHidden: Boolean = false,
     val notificationCount: Int = 0,

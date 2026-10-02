@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">FinLauncher</string>
+    <string name="notification_service_label">FinLauncher Bildirishnomalar Xizmati</string>
+    <string name="search_hint">Ilovalarni qidirish…</string>
+    <string name="favorites_title">Sevimli ilovalar</string>
+    <string name="all_apps_title">Barcha ilovalar</string>
+    <string name="settings_title">Sozlamalar</string>
+    <string name="add_to_favorites">Sevimlilarga qo\'shish</string>
+    <string name="remove_from_favorites">Sevimlilardan chiqarish</string>
+    <string name="app_info">Ilova haqida</string>
+    <string name="uninstall">O\'chirib tashlash</string>
+    <string name="hide_app">Ilovani yashirish</string>
+    <string name="unhide_app">Yashirishni bekor qilish</string>
+</resources>

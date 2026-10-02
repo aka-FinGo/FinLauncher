@@ -1,0 +1,119 @@
+name: Build & Release FinLauncher APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repozitoriyani yuklash (Checkout)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Java 17 (JDK) o'rnatish
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Dinamik Versiya Raqamini Belgilash (+1.0.XX)
+        id: versioning
+        run: |
+          RUN_NUM="${{ github.run_number }}"
+          VERSION_NAME=$(printf "1.0.%02d" "$RUN_NUM")
+          VERSION_CODE="$RUN_NUM"
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          
+          echo "=========================================="
+          echo "📦 Boshlanmoqda: FinLauncher v$VERSION_NAME (Code: $VERSION_CODE)"
+          echo "=========================================="
+
+      - name: Release Keystore tekshirish va yaratish
+        run: |
+          mkdir -p app/keystore
+          if [ ! -f app/keystore/finlauncher.jks ]; then
+            echo "Keystore yaratilmoqda..."
+            keytool -genkeypair -v \
+              -keystore app/keystore/finlauncher.jks \
+              -alias finlauncher \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass finlauncher123 \
+              -keypass finlauncher123 \
+              -dname "CN=FinLauncher, OU=FinGo, O=FinGo, L=Tashkent, ST=Tashkent, C=UZ"
+          fi
+
+      - name: Release APK-ni yig'ish (Assemble Release)
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PversionCode="${{ env.VERSION_CODE }}" \
+            -PversionName="${{ env.VERSION_NAME }}" \
+            -PKEYSTORE_FILE="keystore/finlauncher.jks" \
+            -PKEYSTORE_PASSWORD="finlauncher123" \
+            -PKEY_ALIAS="finlauncher" \
+            -PKEY_PASSWORD="finlauncher123" \
+            --stacktrace --no-daemon
+
+      - name: APK fayllarini ajratish va tayyorlash
+        run: |
+          mkdir -p dist
+          UNIVERSAL_APK=$(find app/build/outputs/apk -type f -name "*.apk" ! -name "*unsigned*" | head -n 1)
+          if [ -n "$UNIVERSAL_APK" ]; then
+            echo "Asosiy APK topildi: $UNIVERSAL_APK"
+            cp "$UNIVERSAL_APK" dist/FinLauncher.apk
+            cp "$UNIVERSAL_APK" "dist/FinLauncher-v${{ env.VERSION_NAME }}.apk"
+          else
+            echo "Xatolik: APK topilmadi!"
+            exit 1
+          fi
+
+      - name: 📱 FinLauncher APK Artifacts-ga yuklash
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinLauncher-v${{ env.VERSION_NAME }}-APK
+          path: dist
+          retention-days: 14
+
+      - name: 🚀 GitHub Release nashr qilish
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: "v${{ env.VERSION_NAME }}"
+          name: "FinLauncher v${{ env.VERSION_NAME }}"
+          body: |
+            ## 📱 FinLauncher v${{ env.VERSION_NAME }} (Build #${{ env.VERSION_CODE }})
+
+            ### 🚀 Yangilanishlar va Imkoniyatlar:
+            * **Ergonomik Alifbo To'lqini (Alphabet Wave Slider):** Bir qo'l (bosh barmoq) bilan A-Z bo'ylab to'lqinsimon surish va tebranish.
+            * **Sevimli Ilovalar (Home Favorites):** Bosh ekranda eng kerakli 5–8 ta ilova.
+            * **Inline Bildirishnomalar:** Xabarlar ilova yonida darhol ko'rinishi.
+            * **Minimalist Soat va Batareya:** Toza AMOLED dizayn.
+            * **Ilovalarni Yashirish:** Maxfiy ilovalarni ro'yxatdan yashirish imkoniyati.
+
+            ---
+            *Avtomatik tarzda GitHub Actions CI/CD orqali yig'ilgan va imzolangan.*
+          files: |
+            dist/*.apk
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

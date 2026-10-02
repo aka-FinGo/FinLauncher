@@ -36,14 +36,14 @@ import androidx.compose.ui.unit.sp
 import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.PureBlack
 import com.fingo.finlauncher.ui.theme.TextPrimary
-import com.fingo.finlauncher.ui.theme.TextTertiary
+import com.fingo.finlauncher.ui.theme.TextSecondary
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
 fun AlphabetWaveSlider(
     modifier: Modifier = Modifier,
-    availableLetters: List<Char> = ('A'..'Z').toList() + listOf('#'),
+    availableLetters: List<Char> = listOf('★') + ('A'..'Z').toList(),
     onLetterSelected: (Char) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -68,8 +68,8 @@ fun AlphabetWaveSlider(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .width(42.dp)
-            .padding(vertical = 16.dp)
+            .width(50.dp)
+            .padding(vertical = 24.dp)
             .onGloballyPositioned { layoutCoordinates ->
                 columnHeight = layoutCoordinates.size.height.toFloat()
             }
@@ -122,67 +122,73 @@ fun AlphabetWaveSlider(
                     (index + 0.5f) * (columnHeight / count)
                 } else -100f
 
-                // Niagara wave distortion formula
+                // Niagara wave curved displacement calculation
                 val distance = if (touchY >= 0f) abs(touchY - itemCenterY) else 9999f
-                val waveRadius = 140f
+                val waveRadius = 160f
                 val waveFraction = if (distance < waveRadius) {
                     (1f - (distance / waveRadius))
                 } else 0f
 
+                // Curved displacement: moves smoothly to the left
+                val curveOffset = if (isDragging) {
+                    -waveFraction * waveFraction * 44f
+                } else 0f
+
                 val offsetXAnim by animateFloatAsState(
-                    targetValue = if (isDragging) -waveFraction * 26f else 0f,
-                    animationSpec = spring(stiffness = 600f),
+                    targetValue = curveOffset,
+                    animationSpec = spring(stiffness = 800f, dampingRatio = 0.75f),
                     label = "waveOffset"
                 )
 
                 val scaleAnim by animateFloatAsState(
-                    targetValue = if (isDragging) 1f + (waveFraction * 0.7f) else 1f,
-                    animationSpec = spring(stiffness = 600f),
+                    targetValue = if (isDragging) 1f + (waveFraction * 0.9f) else 1f,
+                    animationSpec = spring(stiffness = 800f, dampingRatio = 0.75f),
                     label = "waveScale"
                 )
 
-                val isTargetLetter = selectedLetter == letter
+                val isTarget = selectedLetter == letter
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .offset { IntOffset(offsetXAnim.roundToInt(), 0) }
                         .scale(scaleAnim)
-                        .padding(end = 6.dp),
+                        .padding(end = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = letter.toString(),
-                        fontSize = if (isTargetLetter) 14.sp else 10.sp,
-                        fontWeight = if (isTargetLetter) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = if (letter == '★') 13.sp else if (isTarget) 14.sp else 11.sp,
+                        fontWeight = if (isTarget) FontWeight.ExtraBold else FontWeight.Medium,
                         color = when {
-                            isTargetLetter -> AccentCyan
-                            waveFraction > 0.3f -> TextPrimary
-                            else -> TextTertiary
+                            isTarget -> AccentCyan
+                            waveFraction > 0.4f -> TextPrimary
+                            letter == '★' -> AccentCyan.copy(alpha = 0.85f)
+                            else -> Color(0xB3FFFFFF) // Readable over any wallpaper
                         }
                     )
                 }
             }
         }
 
-        // Niagara floating magnified thumb bubble
+        // Niagara floating magnified thumb bubble attached to the curve
         if (isDragging && selectedLetter != null && touchY in 0f..columnHeight) {
             Box(
                 modifier = Modifier
                     .offset {
                         IntOffset(
-                            x = -75.dp.roundToPx(),
-                            y = (touchY - 26.dp.roundToPx()).toInt()
+                            x = -85.dp.roundToPx(),
+                            y = (touchY - 28.dp.roundToPx()).toInt()
                         )
                     }
-                    .size(52.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(AccentCyan),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = selectedLetter.toString(),
-                    fontSize = 24.sp,
+                    fontSize = if (selectedLetter == '★') 22.sp else 24.sp,
                     fontWeight = FontWeight.Black,
                     color = PureBlack
                 )

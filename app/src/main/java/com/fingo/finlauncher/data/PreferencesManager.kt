@@ -3,6 +3,7 @@ package com.fingo.finlauncher.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,6 +17,7 @@ class PreferencesManager(private val context: Context) {
     companion object {
         val FAVORITES_KEY = stringSetPreferencesKey("favorite_apps")
         val HIDDEN_APPS_KEY = stringSetPreferencesKey("hidden_apps")
+        val FIRST_RUN_DONE_KEY = booleanPreferencesKey("is_first_run_done")
     }
 
     val favoritesFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
@@ -24,6 +26,16 @@ class PreferencesManager(private val context: Context) {
 
     val hiddenAppsFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
         preferences[HIDDEN_APPS_KEY] ?: emptySet()
+    }
+
+    val isFirstRunDoneFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FIRST_RUN_DONE_KEY] ?: false
+    }
+
+    suspend fun setFirstRunDone(done: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FIRST_RUN_DONE_KEY] = done
+        }
     }
 
     suspend fun toggleFavorite(packageName: String) {

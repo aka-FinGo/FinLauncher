@@ -8,8 +8,6 @@
 *.apk
 *.ap_
 *.aab
-/keystore/*.jks
-app/keystore/*.jks
 captures/
 .externalNativeBuild
 .cxx

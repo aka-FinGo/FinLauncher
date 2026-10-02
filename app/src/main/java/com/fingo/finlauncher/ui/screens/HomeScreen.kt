@@ -1,24 +1,32 @@
 package com.fingo.finlauncher.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Scaffold
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +34,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,8 +49,8 @@ import com.fingo.finlauncher.ui.components.AppOptionsBottomSheet
 import com.fingo.finlauncher.ui.components.MinimalHeader
 import com.fingo.finlauncher.ui.components.SearchBar
 import com.fingo.finlauncher.ui.theme.AccentCyan
-import com.fingo.finlauncher.ui.theme.DarkBackground
-import com.fingo.finlauncher.ui.theme.TextTertiary
+import com.fingo.finlauncher.ui.theme.TextPrimary
+import com.fingo.finlauncher.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,12 +63,23 @@ fun HomeScreen(
     onToggleHide: (AppModel) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var isDrawerOpen by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedAppForOptions by remember { mutableStateOf<AppModel?>(null) }
-    val listState = rememberLazyListState()
+    
+    val drawerListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Filter apps based on search query and hidden state
+    // Handle Android system back button
+    BackHandler(enabled = isDrawerOpen) {
+        if (searchQuery.isNotEmpty()) {
+            searchQuery = ""
+        } else {
+            isDrawerOpen = false
+        }
+    }
+
+    // Filter apps
     val visibleApps = remember(apps, searchQuery) {
         if (searchQuery.isBlank()) {
             apps.filter { !it.isHidden }
@@ -68,13 +90,11 @@ fun HomeScreen(
         }
     }
 
-    val favoriteApps = remember(visibleApps, searchQuery) {
-        if (searchQuery.isBlank()) {
-            visibleApps.filter { it.isFavorite }
-        } else emptyList()
+    val favoriteApps = remember(apps) {
+        apps.filter { !it.isHidden && it.isFavorite }
     }
 
-    // Group remaining apps by first letter
+    // Group apps alphabetically
     val groupedApps = remember(visibleApps, searchQuery) {
         if (searchQuery.isBlank()) {
             visibleApps
@@ -85,136 +105,204 @@ fun HomeScreen(
         }
     }
 
-    // Map letters to index in the list for smooth wave scrolling
-    val letterIndexMap = remember(favoriteApps, groupedApps, searchQuery) {
+    // Index mapping for alphabet wave slider
+    val letterIndexMap = remember(groupedApps, searchQuery) {
         val map = mutableMapOf<Char, Int>()
         if (searchQuery.isBlank()) {
-            // Index 0: Header, Index 1: SearchBar, Index 2: Favorites Header (if any)
-            var currentIndex = 2
-            if (favoriteApps.isNotEmpty()) {
-                currentIndex += favoriteApps.size + 1 // +1 for "Barcha ilovalar" header
-            }
+            // Index 0: SearchBar
+            var currentIndex = 1
             groupedApps.forEach { (letter, appList) ->
                 map[letter] = currentIndex
-                currentIndex += appList.size + 1 // +1 for letter section header
+                currentIndex += appList.size + 1 // +1 for section header
             }
         }
         map
     }
 
     val availableLetters = remember(groupedApps) {
-        val keys = groupedApps.keys.filter { it != ' ' }
-        if (keys.isEmpty()) ('A'..'Z').toList() else keys
+        val letters = groupedApps.keys.filter { it != ' ' }
+        listOf('★') + (if (letters.isEmpty()) ('A'..'Z').toList() else letters)
     }
 
-    Scaffold(
-        containerColor = DarkBackground,
-        modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
-        Box(
+    // Root Container - Transparent to show system wallpaper with subtle readability gradient
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0x33000000),
+                        Color(0x1A000000),
+                        Color(0x4D000000)
+                    )
+                )
+            )
+    ) {
+        // ==========================================
+        // 1. HOME VIEW (Only Favorite Apps + Clock)
+        // ==========================================
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = 28.dp, bottom = 16.dp)
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { _, dragAmount ->
+                        // Swipe UP opens All Apps Drawer
+                        if (dragAmount < -18f && !isDrawerOpen) {
+                            isDrawerOpen = true
+                        }
+                    }
+                }
         ) {
+            // Clock, Date, Battery
+            MinimalHeader()
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Favorites List
             LazyColumn(
-                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(end = 46.dp) // Leave space for wave slider
+            ) {
+                items(favoriteApps, key = { "home_fav_${it.packageName}" }) { app ->
+                    AppItemRow(
+                        app = app,
+                        onAppClick = { onLaunchApp(app) },
+                        onAppLongClick = { selectedAppForOptions = app }
+                    )
+                }
+            }
+
+            // Swipe Up Indicator at the bottom
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Swipe Up",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Barcha ilovalar",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        // ==========================================
+        // 2. ALL APPS DRAWER VIEW (Slide-Up Transition)
+        // ==========================================
+        AnimatedVisibility(
+            visible = isDrawerOpen,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(320)
+            ) + fadeIn(animationSpec = tween(280)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(280)
+            ) + fadeOut(animationSpec = tween(240))
+        ) {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(end = 40.dp) // Leave space for wave slider on the right
-            ) {
-                // 1. Clock, Date, Battery Header
-                item(key = "header") {
-                    MinimalHeader()
-                }
-
-                // 2. Search Bar
-                item(key = "search") {
-                    SearchBar(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it }
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xCC0D0E11),
+                                Color(0xEE0D0E11)
+                            )
+                        )
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // 3. Favorites Section (When not searching)
-                if (searchQuery.isBlank() && favoriteApps.isNotEmpty()) {
-                    item(key = "fav_title") {
-                        Text(
-                            text = stringResource(R.string.favorites_title),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentCyan,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                    .padding(top = 32.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            // Swipe DOWN returns to Home View
+                            if (dragAmount > 22f && searchQuery.isBlank()) {
+                                isDrawerOpen = false
+                            }
+                        }
+                    }
+            ) {
+                LazyColumn(
+                    state = drawerListState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = 46.dp) // Space for Alphabet Wave Slider
+                ) {
+                    // Search Bar
+                    item(key = "drawer_search") {
+                        SearchBar(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it }
                         )
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
 
-                    items(favoriteApps, key = { "fav_${it.packageName}" }) { app ->
-                        AppItemRow(
-                            app = app,
-                            onAppClick = { onLaunchApp(app) },
-                            onAppLongClick = { selectedAppForOptions = app }
-                        )
-                    }
+                    // Grouped All Apps A-Z
+                    groupedApps.forEach { (letter, appList) ->
+                        if (searchQuery.isBlank()) {
+                            item(key = "drawer_header_$letter") {
+                                Text(
+                                    text = letter.toString(),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentCyan,
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
 
-                    item(key = "all_apps_divider") {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = stringResource(R.string.all_apps_title),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextTertiary,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-
-                // 4. Alphabet Grouped App List
-                groupedApps.forEach { (letter, appList) ->
-                    if (searchQuery.isBlank()) {
-                        item(key = "header_$letter") {
-                            Text(
-                                text = letter.toString(),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AccentCyan,
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        items(appList, key = { "drawer_${it.packageName}_${it.activityName}" }) { app ->
+                            AppItemRow(
+                                app = app,
+                                onAppClick = { onLaunchApp(app) },
+                                onAppLongClick = { selectedAppForOptions = app }
                             )
                         }
                     }
 
-                    items(appList, key = { "${it.packageName}_${it.activityName}" }) { app ->
-                        AppItemRow(
-                            app = app,
-                            onAppClick = { onLaunchApp(app) },
-                            onAppLongClick = { selectedAppForOptions = app }
-                        )
+                    item(key = "drawer_spacer") {
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
-
-                item(key = "bottom_spacer") {
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
-            }
-
-            // 5. Niagara Ergonomic Alphabet Wave Slider (Fixed on the right edge)
-            if (searchQuery.isBlank()) {
-                AlphabetWaveSlider(
-                    availableLetters = availableLetters,
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    onLetterSelected = { letter ->
-                        val targetIndex = letterIndexMap[letter]
-                        if (targetIndex != null) {
-                            coroutineScope.launch {
-                                listState.scrollToItem(targetIndex)
-                            }
-                        }
-                    }
-                )
             }
         }
+
+        // ==========================================
+        // 3. NIAGARA ALPHABET WAVE SLIDER (Fixed on the right)
+        // ==========================================
+        AlphabetWaveSlider(
+            availableLetters = availableLetters,
+            modifier = Modifier.align(Alignment.CenterEnd),
+            onLetterSelected = { letter ->
+                if (letter == '★') {
+                    // Return to Home view with favorites
+                    isDrawerOpen = false
+                } else {
+                    // Open drawer and scroll to letter
+                    isDrawerOpen = true
+                    val targetIndex = letterIndexMap[letter]
+                    if (targetIndex != null) {
+                        coroutineScope.launch {
+                            drawerListState.scrollToItem(targetIndex)
+                        }
+                    }
+                }
+            }
+        )
     }
 
-    // Long press options modal sheet
+    // Long press options bottom sheet
     selectedAppForOptions?.let { app ->
         AppOptionsBottomSheet(
             app = app,

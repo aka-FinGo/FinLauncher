@@ -42,7 +42,7 @@ jobs:
           echo "📦 Boshlanmoqda: FinLauncher v$VERSION_NAME (Code: $VERSION_CODE)"
           echo "=========================================="
 
-      - name: Release Keystore tekshirish va yaratish
+      - name: Release Keystore tekshirish
         run: |
           mkdir -p app/keystore
           if [ ! -f app/keystore/finlauncher.jks ]; then
@@ -55,7 +55,9 @@ jobs:
               -validity 10000 \
               -storepass finlauncher123 \
               -keypass finlauncher123 \
-              -dname "CN=FinLauncher, OU=FinGo, O=FinGo, L=Tashkent, ST=Tashkent, C=UZ"
+              -dname "CN=FinLauncher, OU=FinGo Apps, O=FinGo, L=Tashkent, ST=Tashkent, C=UZ"
+          else
+            echo "Mavjud doimiy finlauncher.jks topildi."
           fi
 
       - name: Release APK-ni yig'ish (Assemble Release)
@@ -99,12 +101,14 @@ jobs:
           body: |
             ## 📱 FinLauncher v${{ env.VERSION_NAME }} (Build #${{ env.VERSION_CODE }})
 
-            ### 🚀 Yangilanishlar va Imkoniyatlar:
-            * **Ergonomik Alifbo To'lqini (Alphabet Wave Slider):** Bir qo'l (bosh barmoq) bilan A-Z bo'ylab to'lqinsimon surish va tebranish.
-            * **Sevimli Ilovalar (Home Favorites):** Bosh ekranda eng kerakli 5–8 ta ilova.
-            * **Inline Bildirishnomalar:** Xabarlar ilova yonida darhol ko'rinishi.
-            * **Minimalist Soat va Batareya:** Toza AMOLED dizayn.
-            * **Ilovalarni Yashirish:** Maxfiy ilovalarni ro'yxatdan yashirish imkoniyati.
+            ### 🚀 Asosiy Yangilanishlar:
+            * **🖼️ Tizim Fon Rasmi (System Wallpaper):** Launcher orqasida telefoningizning asl chiroyli fon rasmi to'liq ko'rinadi.
+            * **🏠 Bosh Ekran Sevimlilari:** Bosh ekranda faqat siz tanlagan eng kerakli sevimli ilovalar ko'rinadi.
+            * **⬆️ Tepaga Swipe (All Apps Drawer):** Bosh ekranni tepaga sursangiz, skrinshotdagidek to'lqinsimon yoyiladigan alifbo va barcha ilovalar ro'yxati chiqadi.
+            * **⭐ Alifbodagi Yulduzcha:** Bosh ekranga tezkor qaytish.
+            * **⚙️ Asosiy Launcher Dialogi:** Ishga tushishi bilan FinLauncher-ni asosiy launcher qilib belgilashni so'raydi.
+            * **👋 Birinchi marta ishga tushganda sevimli ilovalarni tanlash:** Bosh ekranda ko'rinadigan ilovalarni qulay belgilash ekrani.
+            * **🛡️ Play Protect optimallashtirildi:** Xavfli ruxsatnomalar olib tashlandi va doimiy imzo o'rnatildi.
 
             ---
             *Avtomatik tarzda GitHub Actions CI/CD orqali yig'ilgan va imzolangan.*

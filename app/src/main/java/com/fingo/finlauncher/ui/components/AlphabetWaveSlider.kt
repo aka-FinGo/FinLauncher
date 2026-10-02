@@ -190,14 +190,14 @@ fun AlphabetWaveSlider(
                     .size(56.dp)
                     .shadow(8.dp, CircleShape)
                     .clip(CircleShape)
-                    .background(AccentCyan),
+                    .background(Color(0xFFE55B44)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = selectedLetter.toString(),
-                    fontSize = if (selectedLetter == '★') 24.sp else 26.sp,
+                    fontSize = if (selectedLetter == '★' || selectedLetter == '☆') 24.sp else 26.sp,
                     fontWeight = FontWeight.Black,
-                    color = PureBlack
+                    color = Color.White
                 )
             }
         }

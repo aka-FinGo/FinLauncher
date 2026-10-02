@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FinLauncherTheme {
-                val isFirstRunDone by preferencesManager.isFirstRunDoneFlow.collectAsState(initial = true)
+                val isFirstRunDone by preferencesManager.isFirstRunDoneFlow.collectAsState(initial = null)
                 val favorites by preferencesManager.favoritesFlow.collectAsState(initial = emptySet())
                 val hiddenApps by preferencesManager.hiddenAppsFlow.collectAsState(initial = emptySet())
                 val notifications by NotificationListener.notificationsFlow.collectAsState(initial = emptyMap())
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // If first run, show onboarding screen to pick favorite apps for home screen
-                if (!isFirstRunDone && appsList.isNotEmpty()) {
+                if (isFirstRunDone == false && appsList.isNotEmpty()) {
                     OnboardingFavoritesScreen(
                         apps = appsList,
                         onComplete = { selectedSet ->

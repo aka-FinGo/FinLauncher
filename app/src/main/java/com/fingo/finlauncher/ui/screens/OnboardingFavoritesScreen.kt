@@ -1,5 +1,6 @@
 package com.fingo.finlauncher.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -33,19 +34,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fingo.finlauncher.data.AppModel
-import com.fingo.finlauncher.ui.components.SearchBar
 import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.DarkBackground
 import com.fingo.finlauncher.ui.theme.PureBlack
 import com.fingo.finlauncher.ui.theme.TextPrimary
 import com.fingo.finlauncher.ui.theme.TextSecondary
-import androidx.compose.foundation.Image
 
 @Composable
 fun OnboardingFavoritesScreen(
@@ -54,12 +52,12 @@ fun OnboardingFavoritesScreen(
     modifier: Modifier = Modifier
 ) {
     val selectedPackages = remember {
-        // Pre-select some common apps if present (e.g. Phone, Messages, Browser, Telegram)
         val initial = mutableSetOf<String>()
         apps.forEach { app ->
             val p = app.packageName.lowercase()
-            if (p.contains("dialer") || p.contains("messaging") || p.contains("telegram") ||
-                p.contains("chrome") || p.contains("camera") || p.contains("whatsapp")
+            if (p.contains("dialer") || p.contains("phone") || p.contains("messaging") ||
+                p.contains("telegram") || p.contains("chrome") || p.contains("vending") ||
+                p.contains("gallery") || p.contains("camera")
             ) {
                 if (initial.size < 6) initial.add(app.packageName)
             }
@@ -67,153 +65,262 @@ fun OnboardingFavoritesScreen(
         mutableStateOf(initial)
     }
 
-    var searchQuery by remember { mutableStateOf("") }
+    val selectedList = remember(apps, selectedPackages.value) {
+        apps.filter { selectedPackages.value.contains(it.packageName) }
+    }
 
-    val filteredApps = remember(apps, searchQuery) {
-        if (searchQuery.isBlank()) apps
-        else apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val unselectedList = remember(apps, selectedPackages.value) {
+        apps.filter { !selectedPackages.value.contains(it.packageName) }
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xE60D0E11),
-                        Color(0xF50D0E11)
-                    )
-                )
-            )
-            .padding(horizontal = 20.dp, vertical = 24.dp)
+            .background(Color(0xF00D0E11))
+            .padding(top = 28.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "FinLauncher-ga xush kelibsiz! 👋",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = AccentCyan
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Bosh ekranda ko'rinib turishi uchun sevimli ilovalaringizni tanlang (masalan, 4–8 ta):",
-                fontSize = 14.sp,
-                color = TextSecondary,
-                lineHeight = 20.sp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            SearchBar(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                modifier = Modifier.padding(horizontal = 0.dp)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Barcha ilovalar (${filteredApps.size})",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary
-                )
-                Text(
-                    text = "Tanlandi: ${selectedPackages.value.size}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AccentCyan
-                )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp)
+        ) {
+            // Top Pill: "X selected · 8 recommended"
+            item(key = "top_pill") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, bottom = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0x33FFFFFF))
+                            .padding(horizontal = 18.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "${selectedPackages.value.size} tanlandi · 8 tavsiya etiladi",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Info Card 1: Star
+            item(key = "info_card_1") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x22E55B44)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Star,
+                            contentDescription = "Star",
+                            tint = Color(0xFFE55B44),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Sevimli ilovalar tezkor kirish uchun asosiy ekranda chiqadi",
+                        fontSize = 14.sp,
+                        color = TextPrimary,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
 
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                items(filteredApps, key = { it.packageName }) { app ->
-                    val isChecked = selectedPackages.value.contains(app.packageName)
+            // Info Card 2: CheckCircle
+            item(key = "info_card_2") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x22E55B44)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = "Check",
+                            tint = Color(0xFFE55B44),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Ko'pchilik eng ko'p ishlatadigan 4 tadan 8 tagacha ilovalarni tanlaydi",
+                        fontSize = 14.sp,
+                        color = TextPrimary,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+
+            // Section: Selected
+            if (selectedList.isNotEmpty()) {
+                item(key = "section_selected") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Tanlanganlar",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                items(selectedList, key = { "sel_${it.packageName}" }) { app ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .clickable {
                                 val current = selectedPackages.value.toMutableSet()
-                                if (isChecked) current.remove(app.packageName)
-                                else current.add(app.packageName)
+                                current.remove(app.packageName)
                                 selectedPackages.value = current
                             }
-                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                            .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (app.iconBitmap != null) {
-                                Image(
-                                    bitmap = app.iconBitmap,
-                                    contentDescription = app.label,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            }
+                        Checkbox(
+                            checked = true,
+                            onCheckedChange = {
+                                val current = selectedPackages.value.toMutableSet()
+                                current.remove(app.packageName)
+                                selectedPackages.value = current
+                            },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = Color(0xFFE55B44),
+                                checkmarkColor = Color.White
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        if (app.iconBitmap != null) {
+                            Image(
+                                bitmap = app.iconBitmap,
+                                contentDescription = app.label,
+                                modifier = Modifier.size(42.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(14.dp))
 
                         Text(
                             text = app.label,
-                            fontSize = 15.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = TextPrimary,
                             modifier = Modifier.weight(1f)
-                        )
-
-                        Checkbox(
-                            checked = isChecked,
-                            onCheckedChange = { checked ->
-                                val current = selectedPackages.value.toMutableSet()
-                                if (checked) current.add(app.packageName)
-                                else current.remove(app.packageName)
-                                selectedPackages.value = current
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = AccentCyan,
-                                checkmarkColor = PureBlack
-                            )
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = { onComplete(selectedPackages.value) },
-                colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-            ) {
+            // Section: Suggestions
+            item(key = "section_suggestions") {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Bosh Ekranga O'tish (${selectedPackages.value.size})",
+                    text = "Boshqa ilovalar",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PureBlack
+                    color = TextPrimary,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            items(unselectedList, key = { "unsel_${it.packageName}" }) { app ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            val current = selectedPackages.value.toMutableSet()
+                            current.add(app.packageName)
+                            selectedPackages.value = current
+                        }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = false,
+                        onCheckedChange = {
+                            val current = selectedPackages.value.toMutableSet()
+                            current.add(app.packageName)
+                            selectedPackages.value = current
+                        },
+                        colors = CheckboxDefaults.colors(
+                            uncheckedColor = Color(0x66FFFFFF)
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    if (app.iconBitmap != null) {
+                        Image(
+                            bitmap = app.iconBitmap,
+                            contentDescription = app.label,
+                            modifier = Modifier.size(42.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Text(
+                        text = app.label,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            item(key = "bottom_spacer") {
+                Spacer(modifier = Modifier.height(100.dp))
+            }
+        }
+
+        // Floating Done Button at bottom right (matches Niagara screenshot!)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFFE55B44))
+                .clickable { onComplete(selectedPackages.value) }
+                .padding(horizontal = 24.dp, vertical = 14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Done",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Tayyor",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         }

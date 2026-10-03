@@ -1,42 +1,37 @@
-# Session Handoff: FinLauncher (Niagara Launcher Free 1:1 Replica)
+# Session Handoff: FinLauncher (Reverse-Engineered Niagara Launcher 1:1)
 
-> **Sana va Vaqt**: 2026-10-02 18:03 UTC  
+> **Sana va Vaqt**: 2026-10-03 04:35 UTC  
 > **Loyiha**: [FinLauncher (GitHub: aka-FinGo/FinLauncher)](https://github.com/aka-FinGo/FinLauncher)  
-> **Oxirgi Commit**: `e8c37a6` (branch: `main`)  
-> **Holat**: Niagara Launcher Free versiyasining barcha imkoniyatlari 1:1 va 100% o'zbek tilida FinLauncher'ga ko'chirildi. GitHub Actions orqali APK avtomatik yig'ilmoqda.
+> **Oxirgi Commit**: `30e02b9` (branch: `main`)  
+> **Release**: `v1.0.07` (Muvaffaqiyatli build qilindi va chiqarildi)  
+> **Holat**: Niagara Launcher 1.16.31 APK si JADX orqali to'liq dekompilyatsiya qilindi. Haqiqiy Gauss to'lqin formulasi (`2^( (1/c) * (-4*delta^2) )`) va kubik magnit nishon fiksatsiyasi FinLauncher'ga ko'chirildi. APK `/sdcard/Download/` papkasiga sinxronizatsiya qilinmoqda.
 
 ---
 
-## 1. Bajarilgan Ishlar (Completed Tasks & Diff Summary)
+## 1. Reverse Engineering Natijalari (Reverse Engineering Discovery)
 
-1. **Niagara Free 1:1 To'lqinsimon Alifbo (Alphabet Wave Slider)**:
-   - `AlphabetWaveSlider.kt` skrinshotlardagi kabi 155dp chuqurlikdagi kosinus to'lqini bilan qayta yozildi.
-   - Tanlangan harfda Niagara Coral (`#E55B44`) rangidagi doiraviy nishon (bubble) va oq harf chiqishi ta'minlandi.
-   - Kechikish (drag lag) nolga tushirildi (0ms), harf almashganda nozik haptik tebranish ulandi.
-   - Alifboning tepasida `☆` (bosh ekranga qaytish), pastida `°` (sozlamalarga o'tish) ulandi.
+Niagara Launcher'ning `NaZLkiZcQ4E9Qc7F5WGdQ.java` va `Y8RBzXNjmCEZkb.java` sinflaridan quyidagi haqiqiy formulalar aniqlandi va FinLauncher'ga ko'chirildi:
 
-2. **1:1 Niagara Sozlamalar Tizimi (SettingsScreen.kt)**:
-   - Skrinshotlardagi kabi oval pill ("FinLauncher sozlamalari · Bepul versiya") va brand logotipi.
-   - **Samaradorlik (Productivity)**: Tezkor javoblar, Taqvim rejasi, Taqvim voqealari, Ob-havo ma'lumoti, Musiqa pleyeri (barchasi DataStore bilan ishlaydigan kalitlar).
-   - **Mavzular (Themes)**: Mavzu yaratish, Joriy mavzuni tahrirlash, Mening mavzularim, Tayyor mavzular, Jamiyat mavzulari.
-   - **Kengaytirilgan (Advanced)**: Ilova haqida (v1.0.06), Asosiy launcherni almashtirish, Qayta ishga tushirish, Yashirilgan ilovalar boshqaruvi, Haptik tebranish, O'chirish.
-
-3. **Dinamik Niagara Coral FAB (`HomeScreen.kt`)**:
-   - Asosiy ro'yxatda turganda dumaloq qizil qidiruv tugmasi (`🔍`).
-   - Ro'yxat eng pastiga tushganda yoki sozlamalar bo'limiga yetganda avtomatik tishli g'ildirak (`⚙`) belgisiga aylanadi.
-
-4. **100% O'zbek Tili (Localization)**:
-   - `app/src/main/res/values/strings.xml` va `app/src/main/res/values-uz/strings.xml` fayllari Niagara'ning rasmiy o'zbekcha atamalari bilan to'liq boyitildi.
+1. **Gauss Eksponentsial To'lqin Formulasi (`NaZLkiZcQ4E9Qc7F5WGdQ.java:484`)**:
+   $$f_{\text{pow}} = 2^{\frac{1}{c} \cdot (-4 \cdot \Delta^2)}$$
+   Oddiy kosinus yoki chiziqli formulalar Niagara silliqligini bera olmasligining sababi — Niagara aynan ushbu Gauss qo'ng'iroqsimon (bell curve) egri chizig'idan foydalanishidadir.
+2. **Kubik Magnit Snapping (Taktil Harfga Yopishish) (`NaZLkiZcQ4E9Qc7F5WGdQ.java:273-276`)**:
+   $$\Delta y_{\text{snapped}} = y_{\text{center}} + \left( \frac{(2 \cdot \text{relY})^3}{2} \right) \cdot \text{itemHeight}$$
+   Ushbu $x^3$ kubik interpolyatsiya tufayli qizil shar barmoq harf ustidan o'tayotganda harfning qoq markaziga magnit kabi "yopishib" turadi va keyingi harfga silliq uzilib o'tadi.
+3. **Dinamik Gorizontal Tortish Chuqurligi (`touchXOffset`)**:
+   Barmoq chapga tortilgan sari to'lqin ekranning 180dp ichkarisigacha chuqurlashadi.
+4. **Spring Physics (Prujina Easing)**:
+   Barmoq uzilganda damping ratio `0.5f` va stiffness `MediumLow` bilan titramasdan asl holiga qaytadi.
 
 ---
 
 ## 2. CI/CD & Build Holati
 
-- **GitHub Actions Workflow**: Run `#37044762973`
-- **Chiqadigan Versiya**: `v1.0.06`
-- **Doimiy Keystore**: `app/keystore/finlauncher.jks` (Play Protect tomonidan bloklanmaydi va yangilanishlar ziddiyatsiz o'rnatiladi).
+- **Chiqarilgan Versiya**: `v1.0.07`
+- **Imzo**: Doimiy `finlauncher.jks`
 - **Yuklab olish manzili**:
-  `https://github.com/aka-FinGo/FinLauncher/releases/latest`
+  [FinLauncher-v1.0.07.apk](https://github.com/aka-FinGo/FinLauncher/releases/download/v1.0.07/FinLauncher-v1.0.07.apk)
+- **Lokal Fayl**: `/sdcard/Download/FinLauncher-v1.0.07.apk` va `/sdcard/Download/FinLauncher.apk`
 
 ---
 

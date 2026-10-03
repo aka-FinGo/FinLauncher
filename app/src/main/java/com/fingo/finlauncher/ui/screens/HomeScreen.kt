@@ -4,11 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -149,6 +154,21 @@ fun HomeScreen(
         else visibleApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     }
 
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                return Offset.Zero
+            }
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 45f && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
+                    StatusBarHelper.expandNotifications(context)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -161,15 +181,8 @@ fun HomeScreen(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(end = 52.dp) // Space for the wave slider on the right
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures { _, dragAmount ->
-                        // Swipe DOWN at top pulls down system notification shade
-                        if (dragAmount > 24f && listState.firstVisibleItemIndex == 0) {
-                            StatusBarHelper.expandNotifications(context)
-                        }
-                    }
-                }
+                .nestedScroll(nestedScrollConnection)
+                .padding(end = 40.dp) // Space for the wave slider on the right
         ) {
             // A. Clock, Date, Battery
             item(key = "header_clock") {
@@ -307,17 +320,25 @@ fun HomeScreen(
             hapticsEnabled = hapticsEnabled,
             modifier = Modifier.align(Alignment.CenterEnd),
             onLetterSelected = { letter ->
-                val targetIndex = letterIndexMap[letter] ?: letterIndexMap['☆'] ?: 0
+                val targetIndex = letterIndexMap[letter] ?: 0
                 coroutineScope.launch {
-                    listState.scrollToItem(targetIndex)
+                    listState.scrollToItem(targetIndex, 0)
                 }
             }
         )
 
         // ==========================================
         // 3. FLOATING ACTION BUTTON (Niagara Coral FAB)
+        // Appears when scrolling down into All Apps (1:1 with Niagara)
         // ==========================================
-        if (!isSearchOpen) {
+        AnimatedVisibility(
+            visible = !isSearchOpen && listState.firstVisibleItemIndex > 0,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 56.dp, bottom = 28.dp)
+        ) {
             FloatingActionButton(
                 onClick = {
                     if (isNearBottom) {
@@ -329,10 +350,7 @@ fun HomeScreen(
                 containerColor = Color(0xFFE55B44), // Niagara coral/red accent
                 contentColor = PureBlack,
                 shape = CircleShape,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 56.dp, bottom = 28.dp)
-                    .size(54.dp)
+                modifier = Modifier.size(54.dp)
             ) {
                 Icon(
                     imageVector = if (isNearBottom) Icons.Outlined.Settings else Icons.Outlined.Search,

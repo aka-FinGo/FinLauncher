@@ -29,11 +29,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fingo.finlauncher.ui.theme.AccentCyan
 import com.fingo.finlauncher.ui.theme.TextPrimary
 import com.fingo.finlauncher.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
@@ -54,7 +57,8 @@ fun MinimalHeader(
     // Live clock updater
     LaunchedEffect(Unit) {
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("EEEE, d-MMMM", Locale("uz"))
+        // Niagara date format: "Jum, 2-okt"
+        val dateFormat = SimpleDateFormat("EEE, d-MMM", Locale("uz"))
         while (true) {
             val now = Date()
             currentTime = timeFormat.format(now)
@@ -90,15 +94,22 @@ fun MinimalHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Large Clock
+        // Large Clock (1:1 with Niagara screenshot)
         Text(
             text = currentTime.ifEmpty { "12:00" },
-            fontSize = 46.sp,
-            fontWeight = FontWeight.Light,
+            fontSize = 58.sp,
+            fontWeight = FontWeight.Medium,
             color = TextPrimary,
-            letterSpacing = (-1).sp
+            letterSpacing = (-1.5).sp,
+            style = TextStyle(
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    offset = Offset(0f, 2f),
+                    blurRadius = 4f
+                )
+            )
         )
 
         Spacer(modifier = Modifier.height(2.dp))
@@ -110,26 +121,41 @@ fun MinimalHeader(
         ) {
             Text(
                 text = currentDate.ifEmpty { "Bugun" },
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Normal,
-                color = TextSecondary
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary.copy(alpha = 0.90f),
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        offset = Offset(0f, 2f),
+                        blurRadius = 4f
+                    )
+                )
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             // Battery indicator
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = if (isCharging) Icons.Outlined.BatteryChargingFull else Icons.Outlined.BatteryFull,
                     contentDescription = "Battery",
-                    tint = if (isCharging) AccentCyan else TextSecondary,
+                    tint = if (isCharging) Color(0xFF81C784) else TextSecondary,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "$batteryPct%",
                     fontSize = 13.sp,
-                    color = if (isCharging) AccentCyan else TextSecondary
+                    fontWeight = FontWeight.Medium,
+                    color = if (isCharging) Color(0xFF81C784) else TextSecondary,
+                    style = TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.65f),
+                            offset = Offset(0f, 1f),
+                            blurRadius = 3f
+                        )
+                    )
                 )
             }
         }
